@@ -12,6 +12,7 @@ n_air = 1.0002926;
 n_glass = 1.7; %da cercare valore tipico pv 
 
 beta = deg2rad(30); %tilt angle
+gamma = deg2rad(15);
 
 Location.latitude = 45.4773;
 Location.longitude =  9.1815;
@@ -28,20 +29,26 @@ DHI=zeros(24*60, 365);
 GR =zeros(24*60, 365);
 % Create 1-min time series for Jan 1, 2012
 i=1;
-for m=1:12
-    for d=1:30
+for m= 6:6
+    for d = 1:30
 DN = datenum(2012, m,d):1/(24*60):datenum(2012, m, d, 23, 59, 59);
 Time = pvl_maketimestruct(DN, 1);
 [SunAz, SunEl, ApparentSunEl, SolarTime]=pvl_ephemeris(Time, Location);
 [SunAz1, SunEl1, ApparentSunEl1]=pvl_spa(Time, Location);
 [ClearSkyGHI, ClearSkyDNI, ClearSkyDHI]= pvl_clearsky_ineichen(Time, Location);
 dHr = Time.hour+Time.minute./60+Time.second./3600; % Calculate decimal hours for plotting
-z(:, i)=SunEl1;
-alpha(:, i)=SunAz1;
+z(:, i)=deg2rad(SunEl1);
+alpha(:, i)=deg2rad(SunAz1);
 GHI(:, i)=ClearSkyGHI;
 DNI(:, i)=ClearSkyDNI;
 DHI(:, i)=ClearSkyDHI;
+
+GHI(isnan(GHI))=0;
+DNI(isnan(DNI))=0;
+DHI(isnan(DHI))=0;
+
 GR(:, i) = pvl_grounddiffuse(rad2deg(beta), GHI(:,i), Albedo);
+
 i=i+1;
     end
 end
@@ -56,13 +63,30 @@ end
 % xlabel('Hour of the Day (hr)')
 % ylabel('Solar Elevation Angle (deg)')
 % dif = ApparentSunEl1-ApparentSunEl;
+%% Coefficienti correttivi
+Gdiff = DHI;
+Gdni = DNI; 
+Grefl = GR; 
 %% Formule irradianza
-% 
-% tau= @(theta, theta_r) e^(-K*L/cos(theta_r))*(1-1/2*((sin(theta_r-theta))^2/(sin(theta_r+theta))^2+(tan(theta_r-theta))^2/(tan(theta_r-theta))^2));
-% theta = acos(cos(z)*cos(beta) + sin(z)*sin(beta)*sin(alpha-gamma));
-% theta_r=(sin(n_air/n_glass)*sin(theta));
-% 
-% Gtot = Gdni*cos(theta) + Gdiff* (1+cos(beta))/2 + Grefl*(1-cos(beta))/2; 
-% 
-% G = tau_b*Gdni*cos(theta) + tau_d*Gdiff*(1+cos(beta))/2; 
+
+theta = acos(cos(z).*cos(beta) + sin(z).*sin(beta).*sin(alpha-gamma));
+theta_r=asin(n_air/n_glass.*sin(theta));
+ 
+Gtot = Gdni.*cos(theta) + Gdiff.*(1+cos(beta))/2 + Grefl*(1-cos(beta))/2; 
+
+tau= @(theta, theta_r) exp((-K*L./cos(theta_r)).*(1-1/2.*((sin(theta_r-theta)).^2./(sin(theta_r+theta)).^2+(tan(theta_r-theta)).^2./(tan(theta_r-theta)).^2)));
+
+tau_b=tau(theta, theta_r);
+beta_deg=rad2deg(beta);
+theta_equiv_diff_deg=59.7-0.1388*beta_deg+0.001497*beta_deg^2;
+theta_equiv_diff=deg2rad(theta_equiv_diff_deg);
+tau_d=tau(theta_equiv_diff, theta_r);
+tau_0=exp((-K*L).*(1-((n_glass-n_air)./(n_glass+n_air)).^2));
+
+K_tau_b=tau_b/tau_0;
+K_tau_d=tau_d/tau_0;
+
+G = tau_b.*Gdni.*cos(theta) + tau_d.*Gdiff.*(1+cos(beta))/2; 
+
+dHr = Time.hour+Time.minute./60+Time.second./3600;
 
