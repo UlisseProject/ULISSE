@@ -1,17 +1,22 @@
+i=iPV-i0*(exp(V/(n*Vt))-1);
 
-theta_r=(sin(n_air/n_glass)*sin(theta));
+iSC=iSC_ref*Gtot/Gref*(1+alphaISC*(Tc-Tc_ref));
+VOC=VOC_ref*(1+betaVOC*(Tc-TC_ref))+A*log(Gtot/Gref);
 
-tau= @(theta, theta_r) e^(-K*L/cos(theta_r))*(1-1/2*((sin(theta_r-theta))^2/(sin(theta_r+theta))^2+(tan(theta_r-theta))^2/(tan(theta_r-theta))^2));
-tau_b=tau(theta, theta_r);
+Tc_ref=25;
+Gref=1000;
+iPV_ref=;
+alphaISC=;
+iPV=Gtot/Gref*(iPV_ref*(1+alphaISC*(Tc-Tref)));
+i0_ref=;
+Tref=;
+Eg_ref=;
+Eg=1.17-4.73*10^(-4)*Tc^2/(Tc+636);
+n=;
+k=8.6173324; %Boltzmann constant
+i0=io_ref*(Tc/Tref)^3*exp(Eg_ref/(n*k*Tref)-Eg/(n*k*Tc));
 
-beta_grad=rad2deg(beta);
-theta_equiv_diff_deg=59.7-0.1388*beta_deg+0.001497*beta_deg^2;
-theta_equiv_diff=deg2rad(theta_equiv_diff_deg);
 
-tau_d=tau(theta_equiv_diff, theta_r);
-
-tau_0=e^(-K*L)*(1-((n_glass-n_air)/(n_glass+n_air))^2);
-K_tau_b=tau_b/tau_0;
-K_tau_d=tau_d/tau_0;
+n = 1.0134; % ideality factor (diode factor)
 
 
