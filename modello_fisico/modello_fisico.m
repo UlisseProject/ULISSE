@@ -17,16 +17,17 @@ gamma = deg2rad(15);
 Location.latitude = 45.4773;
 Location.longitude =  9.1815;
 Location.altitude = 150;
+load('Tamb_matrix.mat')
 
 %% Prova pvl_spa
 
 Albedo=0.25;
-z=zeros(24*60, 365);
-alpha=zeros(24*60,365);
-GHI=zeros(24*60, 365);
-DNI=zeros(24*60, 365);
-DHI=zeros(24*60, 365);
-GR =zeros(24*60, 365);
+z=zeros(24*60, 366);
+alpha=zeros(24*60,366);
+GHI=zeros(24*60, 366);
+DNI=zeros(24*60, 366);
+DHI=zeros(24*60, 366);
+GR =zeros(24*60, 366);
 % Create 1-min time series for Jan 1, 2012
 giorni_mese=[31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 i=1;
@@ -121,7 +122,7 @@ figure(5)
 plot(rad2deg(theta_r(:,1:31)), tau_d(:,1:31))
 title('Glass trasmittance for direct irradiance (tau_d)')
 xlabel('theta [°]')
-ylabel('tau_b')
+ylabel('tau_d')
 
 %% plot movimento angoli
 figure(6)
@@ -154,30 +155,31 @@ title('cos(theta) as a function of time')
 xlabel('time [h]')
 ylabel('cos(theta)')
 
-%% Formula NOCT: formula e parametri presi da Temperature Dependent Power Modeling of Photovoltaics 2013
-
-T_amb = 25; % INPUT ESTERNO DEL SISTEMA
-
-NOCT = 45; % Temperatura in gradi, chiedere se va bene o è corretta 
-Tc_ref = 25; % Temperatura in gradi di riferimento; 
-eta_r = 0.129; % efficienza a temperatura di riferimento 
-T_coeff = 0.0048; %coefficiente di temperatura
-Gref = 1000; 
-
-Tc = T_amb + (NOCT - Tref)*Gtot/Gref;
-
-eta = eta_r*(1 - T_coeff*(Tc - T_ref));
-
-
-%% 
-alphaISC = ; % temperature coefficient for short circuit
-iPV_ref = ; %dato da trovare
-Eg=1.17-4.73*10^(-4)*Tc^2/(Tc+636);
-n = 1.0134; % ideality factor (diode factor)
-Vt = ; %thermal voltage, da capire
-
-iPV=Gtot/Gref*(iPV_ref*(1+alphaISC*(Tc-Tref)));
-i0=io_ref*(Tc/Tref)^3*exp(Eg_ref/(n*k*Tref)-Eg/(n*k*Tc));
+%%
+% %% Formula NOCT: formula e parametri presi da Temperature Dependent Power Modeling of Photovoltaics 2013
+% 
+% T_amb = 25; % INPUT ESTERNO DEL SISTEMA
+% 
+% NOCT = 45; % Temperatura in gradi, chiedere se va bene o è corretta 
+% Tc_ref = 25; % Temperatura in gradi di riferimento; 
+% eta_r = 0.129; % efficienza a temperatura di riferimento 
+% T_coeff = 0.0048; %coefficiente di temperatura
+% Gref = 1000; 
+% 
+% Tc = T_amb + (NOCT - Tref)*Gtot/Gref;
+% 
+% eta = eta_r*(1 - T_coeff*(Tc - T_ref));
+% 
+% 
+% %% 
+% alphaISC = ; % temperature coefficient for short circuit
+% iPV_ref = ; %dato da trovare
+% Eg=1.17-4.73*10^(-4)*Tc^2/(Tc+636);
+% n = 1.0134; % ideality factor (diode factor)
+% Vt = ; %thermal voltage, da capire
+% 
+% iPV=Gtot/Gref*(iPV_ref*(1+alphaISC*(Tc-Tref)));
+% i0=io_ref*(Tc/Tref)^3*exp(Eg_ref/(n*k*Tref)-Eg/(n*k*Tc));
 
 
 
