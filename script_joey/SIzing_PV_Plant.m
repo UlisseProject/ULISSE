@@ -61,11 +61,11 @@ rend_PV = 0.8;%efficiency of power electronics
 start_time = 4;
 end_time = 18;
 
-P_pv = @(x,k,y,eta) max(0,eta*(k(3).*x.^2 + k(2).*x + k(1)).*y);%Power produced by the PV
+P_pv = @(x,k,y,eta) max(0,eta*(k(3).*x.^2 + k(2).*x + k(1)).*y);%Power produced by the PV x is the irradiance, y is the nominal power of the plant
 
 k = [-0.0138 0.000898 0;...
     -0.074 0.001 0;...
-    -0.0187 0.0012 -0.0000004];
+    -0.0187 0.0012 -0.0000004]; % prima colonna sono monocristal
 
 tech = {'mc-Si','a-Si','CIGS'};
 %% Irradiance per hour graph of different technologies
