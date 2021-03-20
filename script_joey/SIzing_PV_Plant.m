@@ -84,7 +84,7 @@ for i = 1:1:3,
     title(tech(i))
     legend(month_label)
 end
-%% LOad profile (residential) We have just this load profile (behaviour)
+%% Load profile (residential) We have just this load profile (behaviour)
 figure
 stairs([residential;residential(end)])
 set(gca,'XLim',[1 length(residential)+1]);
