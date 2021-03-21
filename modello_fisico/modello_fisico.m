@@ -156,7 +156,6 @@ dHr = Time.hour+Time.minute./60+Time.second./3600;
 % % xlabel('theta_r [°]')
 % % ylabel('tau_d')
 
-%% plot movimento angoli
 % figure(6)
 % plot(dHr, rad2deg(theta(:,1)));
 % title('Theta')
@@ -208,102 +207,71 @@ dHr = Time.hour+Time.minute./60+Time.second./3600;
 % % II = find(G(:,1));
 % % plot(rad2deg(theta(II,1)), K_tau_b(II,1))
 
-%%
-% %% Formula NOCT: formula e parametri presi da Temperature Dependent Power Modeling of Photovoltaics 2013
-% 
-% T_amb = 25; % INPUT ESTERNO DEL SISTEMA
-% 
-% NOCT = 45; % Temperatura in gradi, chiedere se va bene o è corretta 
-% Tc_ref = 25; % Temperatura in gradi di riferimento; 
-% eta_r = 0.129; % efficienza a temperatura di riferimento 
-% T_coeff = 0.0048; %coefficiente di temperatura
-% Gref = 1000; 
-% 
-% Tc = T_amb + (NOCT - Tref)*Gtot/Gref;
-% 
-% eta = eta_r*(1 - T_coeff*(Tc - T_ref));
-% 
-% 
-% %% 
-% alphaISC = ; % temperature coefficient for short circuit
-% iPV_ref = ; %dato da trovare
-% Eg=1.17-4.73*10^(-4)*Tc^2/(Tc+636);
-% n = 1.0134; % ideality factor (diode factor)
-% Vt = ; %thermal voltage, da capire
-% 
-% iPV=Gtot/Gref*(iPV_ref*(1+alphaISC*(Tc-Tref)));
-% i0=io_ref*(Tc/Tref)^3*exp(Eg_ref/(n*k*Tref)-Eg/(n*k*Tc));
 
-%% sistema a T_amb = 0° =>  Tc_ref = 25° STC 
-
-T_amb = 0; % INPUT ESTERNO DEL SISTEMA
-Gtot = 1000; % INPUT DA SOPRA MA STO FACENDO TEST IN SITUAZIONE DI RIFERIMENTO
-
-NOCT = 40; % Temperatura in gradi, chiedere se va bene o è corretta 
-Tc_ref = 25; % Temperatura in gradi di riferimento; 
-Gref = 1000; % irradianza di riferimento
-Gnoct = 800; 
-Tnoct = 20; 
-Tc = T_amb + (NOCT - Tnoct)*Gtot/Gnoct; %formula NOCT per temperatura della cella
-
-% Datasheet values of monocristal in silicon
+%% Test per influenza della temperatura su modello: dati iniziali generali
 I_sc_ref = 8.48; % [A]
 V_oc_ref = 37.10; %[V]
 
 Ns = 11 ; %numero di celle in serie, PER ORA A CASO PERCHE' SCRIPT DI JOEY CHE HO E' PRIMA DELLA SUA MODIFICA SULLE DIMENSIONI
-n = 1.0134; % ideality factor (diode factor)
 
-
-k = 8.6173324e-5; % ev/K 
-Vt = n*k*(T_amb+273.15)*Ns;  % thermal voltage 
-
-
-I_pv_ref = I_sc_ref; 
-Vt_ref = n*k*(273.15)*Ns;
-I0_ref = I_pv_ref/(exp(V_oc_ref/(Ns*Vt_ref)) - 1);
-
-Eg = 1.17 - 4.73*(10^-4)*(Tc+273.15).^2./(Tc + 273.15 + 636); 
-
-Eg_ref = 1.17 - 4.73*(10^-4)*(Tc_ref + 273.15).^2./(Tc_ref + 273.15 + 636); 
-
-% %Data from inverter Datasheet (Refusol 100K) (forse per ora non servono)
-% V_min_DC= 460;
-% V_max_DC=850;
-% I_max=240;
-% P_max=115e3;
-% I_SC_STC=9.97; 
-% V_OC_STC=39.4; 
-% I_MPP=240;
-% V_MPP=31.2;
-
-%Temperature coefficients for NOCT formula
-T_P_max=-0.4/100;
 T_V_OC=-0.29/100;% il nostro beta_VOC
 T_I_SC=0.05/100;% il nostro alpha_ISC
 
+%% Confronto con stessa Tamb e Gtot diverse
+T_amb = 20;
+Gtot1 = 800; 
+Gtot2 = 900; 
+Gtot3 = 1000; 
 
-I_pv = (Gtot/Gref)*I_pv_ref*(1 + T_I_SC*(Tc - Tc_ref));
-% I0 = I0_ref*((Tc + 273.15)/(Tc_ref + 273.15))^3*exp((Eg_ref/(n*k*(Tc_ref + 273.15)))-(Eg/(n*k*(Tc + 273.15))));
-V_oc = V_oc_ref*(1 + T_V_OC*(Tc - Tc_ref)) + (Ns*Vt*n)*log(Gtot/Gref);
+[I1, V1, P1, Tc1] = IVP(T_amb, Gtot1, I_sc_ref, V_oc_ref, Ns, T_V_OC, T_I_SC);
+[I2, V2, P2, Tc2] = IVP(T_amb, Gtot2, I_sc_ref, V_oc_ref, Ns, T_V_OC, T_I_SC);
+[I3, V3, P3, Tc3] = IVP(T_amb, Gtot3, I_sc_ref, V_oc_ref, Ns, T_V_OC, T_I_SC);
 
-I0 = I_pv/(exp(V_oc/(Ns*Vt)) - 1);
-
-I = @(V) I_pv - I0*(exp(V/(Ns*Vt)) - 1);
-V = linspace(0,V_oc,1000); 
+figure()
+plot(V1, I1, V2, I2, V3, I3); 
+str1 = sprintf('G = %d',Gtot1);
+str2 = sprintf('G = %d',Gtot2);
+str3 = sprintf('G = %d',Gtot3);
+legend(str1, str2, str3);
+xlabel('Voltage [V]');
+ylabel('Current [A]');
+title('I-V at different Tc with same Tc and different G');
 
 
 figure()
-plot(V,I(V))
-xlabel('Voltage [V]')
-ylabel('Current (A)')
-hold on
+plot(V1, P1, V2, P2, V3, P3); 
+legend(str1, str2, str3);
+xlabel('Voltage [V]');
+ylabel('Power [W]');
+title('P-V at different Tc');
+
+%% Confronto con stessa T_amb e Gtot diverse
+Gtot = 1000; 
+T_amb1 = 0; 
+T_amb2 = 15; 
+T_amb3 = 30; 
+
+[I1, V1, P1, Tc1] = IVP(T_amb1, Gtot, I_sc_ref, V_oc_ref, Ns, T_V_OC, T_I_SC);
+[I2, V2, P2, Tc2] = IVP(T_amb2, Gtot, I_sc_ref, V_oc_ref, Ns, T_V_OC, T_I_SC);
+[I3, V3, P3, Tc3] = IVP(T_amb3, Gtot, I_sc_ref, V_oc_ref, Ns, T_V_OC, T_I_SC);
 
 figure()
-plot(V,I(V))
-xlabel('Voltage [V]')
-ylabel('Current (A)')
-hold on
+plot(V1, I1, V2, I2, V3, I3); 
+str1 = sprintf('Tc = %d',Tc1);
+str2 = sprintf('Tc = %d',Tc2);
+str3 = sprintf('Tc = %d',Tc3);
+legend(str1, str2, str3);
+xlabel('Voltage [V]');
+ylabel('Current [A]');
+title('I-V at different Tc');
 
+
+figure()
+plot(V1, P1, V2, P2, V3, P3); 
+legend(str1, str2, str3);
+xlabel('Voltage [V]');
+ylabel('Power [W]');
+title('P-V at different Tc with same G');
 
 
 
