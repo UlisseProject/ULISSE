@@ -12,13 +12,13 @@ I_SC_STC=9.97;
 V_OC_STC=39.4;
 I_MPP=240;
 V_MPP=31.2;
-%Temperature coefficients for NOCT formula
+%Temperature coefficients
 T_P_max=-0.4/100;
 T_V_OC=-0.29/100;
 T_I_SC=0.05/100;
 %Data from available space 
-Rooftop_lenght= 150;
-Rooftop_width= 80;
+Rooftop_lenght= 60;
+Rooftop_width= 11.5;
 %Design choice according to location or regulation 
 Panels_tilt= 33*pi/180;
 shading_angle=15*pi/180;
@@ -33,7 +33,7 @@ Panels_y=floor((Rooftop_lenght-(Distance_edge*2))/(Panel_projected+Shading_space
 Total_panels=round(Panels_x*Panels_y,0);
 %% Theoretical Power Installed
 P_inst= Total_panels*Power_max;
-%% Modules connected in series
+%% Modules connected in series (Inverter)
 V_OC_Min_T=V_OC_STC*[1+T_V_OC*(Min_T-20)];
 Panels_series=floor(V_max_DC/V_OC_Min_T);
 %% Strings connected in parallel
@@ -55,22 +55,23 @@ filename8= 'MGP2016';
 MGP2016 = xlsread(filename8);
 MGP2016= reshape(MGP2016,[],1);
 load('load_profiles.mat');
+load('Irr_PA_mon.mat');
 P_load = 25e3; %25 kW
 rend_PV = 0.8;%efficiency of power electronics
 
 start_time = 4;
 end_time = 18;
 
-P_pv = @(x,k,y,eta) max(0,eta*(k(3).*x.^2 + k(2).*x + k(1)).*y);%Power produced by the PV x is the irradiance, y is the nominal power of the plant
+P_pv = @(x,k,y,eta) max(0,eta*(k(3).*x.^2 + k(2).*x + k(1)).*y);%Power produced by the PV
 
 k = [-0.0138 0.000898 0;...
     -0.074 0.001 0;...
-    -0.0187 0.0012 -0.0000004]; % prima colonna sono monocristal
+    -0.0187 0.0012 -0.0000004];
 
 tech = {'mc-Si','a-Si','CIGS'};
 %% Irradiance per hour graph of different technologies
-Pn = P_installed/1000; %%nominal power of pv y eta is rend_PV
-month_label=['Jan';'Feb';'Mar';'Apr';'May';'Jun';'Jul';'Aug';'Sep';'Oct';'Nov';'Dec']
+Pn = P_inst/1000; %%nominal power of pv y eta is rend_PV
+month_label=['Jan';'Feb';'Mar';'Apr';'May';'Jun';'Jul';'Aug';'Sep';'Oct';'Nov';'Dec'];
 for i = 1:1:3,
     prod_p = P_pv(IRR_AV_MONTH,k(i,:),Pn,rend_PV);
     figure
@@ -79,12 +80,13 @@ for i = 1:1:3,
     set(gca,'XLim',[0 size(IRR_AV_MONTH,1)])
     set(gca,'XTick',[1:4:57])
     set(gca,'XTickLabel',[4:1:18])
+    set(gca,'Color','w')
     xlabel('t [h]')
     ylabel('P [kW/m^2]')
     title(tech(i))
     legend(month_label)
 end
-%% Load profile (residential) We have just this load profile (behaviour)
+%% Plot residential Profile 
 figure
 stairs([residential;residential(end)])
 set(gca,'XLim',[1 length(residential)+1]);
@@ -93,13 +95,13 @@ set(gca,'XTickLabel',[0:4:24]);
 xlabel('t [h]')
 ylabel('P [%]')
 grid on
-%% irradiance is in [5am,7pm] this is according to the data obtained from 2016 
+%% irradiance is in [5am,7pm] we plot the load for every month in the time window in which we have some irradiance available 
 res_load_pu = repmat(residential(start_time*4:1:end_time*4),1,12);
-res_load_pu(IRR_AV_MONTH == 0) = zeros(size(find(IRR_AV_MONTH == 0)));
+res_load_pu(Irr_PA_mon == 0) = zeros(size(find(Irr_PA_mon == 0)));
 figure
 stairs([start_time*4:1:(end_time*4)],res_load_pu)
 hold on
-stairs([residential;residential(end)].*1.3,'k')
+stairs([residential;residential(end)].*1.2,'k')
 set(gca,'XLim',[1 length(residential)+1]);
 set(gca,'XTick',[1,(4*4+1):4*4:96,97]);
 set(gca,'XTickLabel',[0:4:24]);
@@ -107,14 +109,13 @@ xlabel('t [h]')
 ylabel('P [%]')
 grid on
 hold off
-legend(month_label)
 res_load = res_load_pu.*P_load./100;
 %%
-irr = reshape(IRR_AV_MONTH,[],1);%%put irradiance in one column
+irr = reshape(Irr_PA_mon,[],1);
 p_load = reshape(res_load,[],1);
-%% self consumption graphs func calcuate max PV nominal to get 
+%% y is a vector of the optimal nominal power for a self consumption selected and the three different technologies 
 options = optimoptions('fmincon','Algorithm','interior-point','Display','none');
-self_cons_thres = [.5 .6 .7 .8 .9 1];% define selfconsumption threshold
+self_cons_thres = [.5 .6 .7 .8 .9 1];
 for ii = 1:length(tech),
     for jj = 1:length(self_cons_thres),
         tic
@@ -123,25 +124,40 @@ for ii = 1:length(tech),
     end
 end
 clear fval
+%% PlOt the optimal solution for the selfconsumption , matrix y contains the optimal values for the selected self consumption 
+
 month_label=['Jan';'Feb';'Mar';'Apr';'May';'Jun';'Jul';'Aug';'Sep';'Oct';'Nov';'Dec']
-tech_sel = 3; %selects the technology to be evaluated 
- self_cons_thres = [.5 .6 .7 .8 .9 1];
-self_cons_comp = [.7 .8];% set the threshold you want to analyse 
-%plot for tech 1 self cons 0.8
+
+
+tech_sel = 1;
+% self_cons_thres = [.5 .6 .7 .8 .9 1];
+self_cons_comp = [.9 1];
 figure
-plot(P_pv(irr,k(tech_sel,:),y(tech_sel,find(self_cons_thres == self_cons_comp(1))),rend_PV)./1e3)
+plot(P_pv(irr,k(tech_sel,:),Pn*1000,rend_PV)./1e3)
 hold on
-plot(p_load./1e3,'g')
+plot(p_load./1e3,'-b')
 set(gca,'XLim',[1 length(p_load)]);
-set(gca,'YLim',[0 1.1*max(max(P_pv(irr,k(tech_sel,:),y(tech_sel,find(self_cons_thres == self_cons_comp(1))),rend_PV)),max(P_pv(irr,k(tech_sel,:),y(tech_sel,find(self_cons_thres == self_cons_comp(1))),rend_PV)))]/1e3)
+set(gca,'YLim',[0 1.1*max(max(P_pv(irr,[-0.0138 0.000898 0],y(tech_sel,find(self_cons_thres == self_cons_comp(2))),rend_PV)),max(P_pv(irr,k(tech_sel,:),y(tech_sel,find(self_cons_thres == self_cons_comp(1))),rend_PV)))]/1e3)
+set(gca,'XTick',[28:57:12*57]);
+set(gca,'XTickLabel',month_label);
+set(gca,'Color','w');
+xlabel('t [h]')
+ylabel('P [kW]')
+grid on
+hold off
+
+figure
+plot(P_pv(irr,k(tech_sel,:),y(tech_sel,find(self_cons_thres == self_cons_comp(1))) ,rend_PV)./1e3)
+hold on
+plot(p_load./1e3,'r')
+set(gca,'XLim',[1 length(p_load)]);
+set(gca,'YLim',[0 1.1*max(max(P_pv(irr,[-0.0138 0.000898 0],y(tech_sel,find(self_cons_thres == self_cons_comp(2))),rend_PV)),max(P_pv(irr,k(tech_sel,:),y(tech_sel,find(self_cons_thres == self_cons_comp(1))),rend_PV)))]/1e3)
 set(gca,'XTick',[28:57:12*57]);
 set(gca,'XTickLabel',month_label);
 xlabel('t [h]')
 ylabel('P [kW]')
-legend('P','Load')
 grid on
 hold off
-%Plot for tech 1 self cons 1 
 figure
 plot(P_pv(irr,k(tech_sel,:),y(tech_sel,find(self_cons_thres == self_cons_comp(2))),rend_PV)./1e3)
 hold on
@@ -152,21 +168,19 @@ set(gca,'XTick',[28:57:12*57]);
 set(gca,'XTickLabel',month_label);
 xlabel('t [h]')
 ylabel('P [kW]')
-legend('P','Load')
 grid on
 hold off
-%% Calculate the max energy and power storage for all tech and all self cons thresholds 
 
+%% Calculate the available energy for storing after consumption for different technologies and different self consumptions 
 for jj = 1:length(self_cons_thres),
-    for ii = 1:length(tech)
+    for ii = 1:length(tech),
         a = P_pv(irr,k(ii,:),y(ii,jj),rend_PV) - p_load;
         a(a<0) = zeros(size(find(a<0)));
         max_P_stg(ii,jj) = max(a)/1e3;
-        max_E_stg(ii,jj) = max(sum(reshape(a,size(IRR_AV_MONTH)))./4)/1e3;
+        max_E_stg(ii,jj) = max(sum(reshape(a,size(Irr_PA_mon)))./4)/1e3;
         clear a
     end
 end
-
 %% plot the max power od storage 
 figure
 plot(max_P_stg','Marker','s','MarkerSize',7,'LineStyle','none')
@@ -176,6 +190,7 @@ set(gca,'XTickLabel',self_cons_thres)
 xlabel('self-consumption threshold [p.u.]')
 ylabel('P [kW]')
 grid on
+
 %% plot the max energy of storage 
 figure
 plot(max_E_stg','Marker','s','MarkerSize',7,'LineStyle','none')
@@ -186,10 +201,3 @@ xlabel('self-consumption threshold [p.u.]')
 ylabel('E [kWh]')
 grid on
 
-
-%% change k for tech 
-res_load_pu_eco = repmat(residential,1,12);
-res_load_eco= res_load_pu_eco.*P_load./100;
-irr_eco = reshape(IRR_AV_MONTH_ECO,[],1);%%put irradiance in one column
-p_load_eco = reshape(res_load_eco,[],1);
-prod_p_eco=P_pv(IRR_AV_MONTH_ECO,k(3,:),Pn,rend_PV);% change k for technology 
