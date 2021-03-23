@@ -6,13 +6,20 @@ K = 10; %valore in metri del fattore di estinzione del vetro
 n_air = 1.0002926; 
 n_glass = 1.58992; % da paper
 
-Albedo=0.1;
-z=zeros(24*60, 366);
-alpha=zeros(24*60,366);
-GHI=zeros(24*60, 366);
-DNI=zeros(24*60, 366);
-DHI=zeros(24*60, 366);
-GR =zeros(24*60, 366);
+Albedo =0.1;
+z1 =zeros(24*60, 1);
+alpha1 =zeros(24*60, 1);
+GHI1 =zeros(24*60, 1);
+DNI1 =zeros(24*60, 1);
+DHI1 =zeros(24*60, 1);
+GR1 =zeros(24*60, 1);
+
+z = [];
+alpha = [];
+GHI = []; 
+DNI = [];
+DHI = [];
+GR = [];
 
 giorni_mese=[31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 i=1;
@@ -30,18 +37,32 @@ if nargin == 8
             [SunAz, SunEl, ApparentSunEl, SolarTime]=pvl_ephemeris(Time, Location);
             [SunAz1, SunEl1, ApparentSunEl1]=pvl_spa(Time, Location);
             [ClearSkyGHI, ClearSkyDNI, ClearSkyDHI]= pvl_clearsky_ineichen(Time, Location);
-            z(:, i)=deg2rad(90- SunEl1);
-            alpha(:, i)=deg2rad(SunAz1-180);
-            GHI(:, i)=ClearSkyGHI;
-            DNI(:, i)=ClearSkyDNI;
-            DHI(:, i)=ClearSkyDHI;
+  
+            
+%             z(:, i)=deg2rad(90- SunEl1);
+%             alpha(:, i)=deg2rad(SunAz1-180);
+%             GHI(:, i)=ClearSkyGHI;
+%             DNI(:, i)=ClearSkyDNI;
+%             DHI(:, i)=ClearSkyDHI;
+            z1 = deg2rad(90- SunEl1);
+            alpha1 = deg2rad(SunAz1-180);
+            GHI1 = ClearSkyGHI;
+            DNI1 =ClearSkyDNI;
+            DHI1 =ClearSkyDHI;
+            GR1(:, i) = pvl_grounddiffuse(rad2deg(beta), GHI1, Albedo);
 
-            GHI(isnan(GHI))=0;
-            DNI(isnan(DNI))=0;
-            DHI(isnan(DHI))=0;
-
-            GR(:, i) = pvl_grounddiffuse(rad2deg(beta), GHI(:,i), Albedo);
-
+            GHI1(isnan(GHI1))=0;
+            DNI1(isnan(DNI1))=0;
+            DHI1(isnan(DHI1))=0;
+            GR1(isnan(GR1))=0;
+            
+            z = [z, z1]; 
+            alpha = [alpha, alpha1]; 
+            DNI = [DNI, DNI1]; 
+            DHI = [DHI, DHI1]; 
+            GR = [GR, GR1]; 
+            
+            
             i=i+1;   
             
             if (d == d_fine)&&(m == m_fine)
@@ -68,8 +89,12 @@ elseif nargin == 11
             Time = pvl_maketimestruct(DN, 1);
             [SunAz, SunEl, ApparentSunEl, SolarTime]=pvl_ephemeris(Time, Location);
             [SunAz1, SunEl1, ApparentSunEl1]=pvl_spa(Time, Location);
-            z(:, i)=deg2rad(90- SunEl1);
-            alpha(:, i)=deg2rad(SunAz1-180);
+            z1 =deg2rad(90- SunEl1);
+            alpha1=deg2rad(SunAz1-180);
+            
+            z = [z, z1]; 
+            alpha = [alpha, alpha1]; 
+            
 
             i=i+1;
             
@@ -80,8 +105,11 @@ elseif nargin == 11
     end
 
 else
-    disp("ERRORE: argomenti non sufficienti")
-
+    disp(" !!! ERRORE: argomenti non sufficienti !!!"); 
+    G = 0; 
+    theta = 0; 
+    dHr = 0; 
+    return; 
 end
 
 alt_sol=deg2rad(SunEl1);
