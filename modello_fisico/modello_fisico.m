@@ -4,6 +4,57 @@ clear all; close all; clc;
 addpath functions
 addpath 'PVLib 1.4 Release'
 addpath 'PVLib 1.4 Release\Required Data'
+
+
+%% sizing PV
+%Data from Panel Datasheet (Monocrystalline SunFields)
+Panel_lenght= 1.66; %meters
+Panel_width= 0.99; %meters
+Power_max=300;
+%Data from inverter Datasheet (Refusol 100K)
+V_min_DC= 460;
+V_max_DC=850;
+I_max=240;
+P_max=115e3;
+I_SC_STC=9.97;
+V_OC_STC=39.4;
+I_MPP=240;
+V_MPP=31.2;
+%Temperature coefficients
+T_P_max=-0.4/100;
+T_V_OC=-0.29/100;
+T_I_SC=0.05/100;
+%Data from available space 
+Rooftop_lenght= 60;
+Rooftop_width= 11.5;
+%Design choice according to location or regulation 
+Panels_tilt= 33*pi/180;
+shading_angle=15*pi/180;
+Distance_edge=1.5;
+Min_T= -10;
+Max_T=60;
+%% Number of panels 
+Panels_x=floor(( Rooftop_width-(Distance_edge*2))/Panel_width);
+Panel_projected=Panel_lenght*cos(Panels_tilt);
+Shading_space=(Panel_lenght*sin(Panels_tilt))/tan(shading_angle);
+Panels_y=floor((Rooftop_lenght-(Distance_edge*2))/(Panel_projected+Shading_space));
+Total_panels=round(Panels_x*Panels_y,0);
+%% Theoretical Power Installed
+P_inst= Total_panels*Power_max;
+%% Modules connected in series (Inverter)
+V_OC_Min_T=V_OC_STC*[1+T_V_OC*(Min_T-20)];
+Panels_series=floor(V_max_DC/V_OC_Min_T); %il risultato è 19, è il numero minimo? vuol dire che nel nostro caso che abbiamo 88 pannelli dobbiamo fare 4 file da 22?
+%% Strings connected in parallel
+I_SC_Max_T=I_SC_STC*[1+T_I_SC*(Max_T-20)];
+Parallel_strings=floor(I_max/I_SC_Max_T);
+%% Maximum number of modules per inverter
+Modules_inverter_max=floor(P_max/Power_max);
+Parallel_strings_inverter=floor(Modules_inverter_max/Panels_series);
+Panels_parallel=min(Parallel_strings_inverter,Parallel_strings);
+Panels_inverter=Panels_parallel*Panels_series;
+Inverters=floor((Panels_x*Panels_y)/Panels_inverter);
+P_installed=Inverters*Panels_inverter*Power_max;
+
 %% Dati iniziali
 L = 2.5e-3; %valore di default in metri dello spessore del vetro
 K = 10; %valore in metri del fattore di estinzione del vetro
@@ -18,7 +69,6 @@ Location.latitude = 45.4773;
 Location.longitude =  9.1815;
 Location.altitude = 150;
 load('Tamb_matrix.mat')
-
 %% Prova pvl_spa
 
 Albedo=0.1;
@@ -38,7 +88,7 @@ for m= 6:6
         [SunAz, SunEl, ApparentSunEl, SolarTime]=pvl_ephemeris(Time, Location);
         [SunAz1, SunEl1, ApparentSunEl1]=pvl_spa(Time, Location);
         [ClearSkyGHI, ClearSkyDNI, ClearSkyDHI]= pvl_clearsky_ineichen(Time, Location);
-        dHr = Time.hour+Time.minute./60+Time.second./3600; % Calculate decimal hours for plotting
+%         dHr = Time.hour+Time.minute./60+Time.second./3600; % Calculate decimal hours for plotting
 %        z(:, i)=deg2rad(SunEl1);
         z(:, i)=deg2rad(90- SunEl1);
         %alpha(:, i)=deg2rad(SunAz1);
@@ -272,6 +322,25 @@ legend(str1, str2, str3);
 xlabel('Voltage [V]');
 ylabel('Power [W]');
 title('P-V at different Tc with same G');
+
+%% potenza da passare allo storage
+
+eta_inverter = 0.96;
+P_storage = @(P) eta_inverter*max(P); 
+
+P_prova = P_storage(P1);
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
