@@ -24,7 +24,7 @@ if P_in > 0 %ciclo di carica
      
     
 else    
-    eta = FUNZIONE_ENRICO(SOC, P_in);
+    eta = FUNZIONE_ENRICO(SOC, P_in); % !!! ATTENZIONE: l'iput di SOC deve essere in percentuale
     E_dis = 1/eta*P_in*Dt; %Energia per caricare storage
     Cn = E_dis/Vn;  %nominal capacity
     SOC = SOC + 1/Cn*i*Dt; 
