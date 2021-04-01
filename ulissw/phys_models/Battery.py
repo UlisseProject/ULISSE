@@ -1,13 +1,18 @@
+from datasets import EtaParser
+from models import EtaRegressor
+
 class Battery:
     def __init__(self, soc=0, vn=None, n_cycles=0, 
-                 max_kwh=None, pn=None):
+                 max_kwh=None, pn=None, eff_data='data/eta_data.csv'):
         self.soc = soc
         self.v_n = vn
         self.n_cycles = n_cycles
         self.max_kwh = max_kwh
         self.p_n = pn
         self.e_max = self.max_kwh*3.6e6
-        
+        self.eff_data = EtaParser(path=eff_data)
+        self.eff_model = self.__infer_efficiency()
+
     def charge(self, p_in, dt):
         old_soc = self.soc
         e_n = self.pn*dt
@@ -33,11 +38,15 @@ class Battery:
         
         return p_in, p_left
     
-    def __calc_efficiency(self):
-        # TODO : regression from eta data
-        pass
+    def __infer_efficiency(self):
+        X, y = self.EtaParser.parse_data()
+        model = EtaRegressor(X, y)        
+        _ = model.fit_data()
+
+        return model
     
     def discharge(self, p_out):
-        eta = self.__calc_efficiency()
+        # TODO : replace with predict
+        # eta = self.__calc_efficiency()
         
         e_dis = p_out*dt/eta
