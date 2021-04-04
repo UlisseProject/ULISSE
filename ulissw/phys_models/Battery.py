@@ -43,12 +43,11 @@ class Battery:
 
         return model
     
-    def discharge(self, p_out, dt):
+    def discharge(self, p_out, dt, testing=False):
         X = self.eff_data.format(p_out/self.p_n, self.soc)
         eta = self.eff_model.predict(X)
         e_dis = p_out*dt/eta
-        print(f"[!!!] Eta estimated at {eta:.4f} [!!!]")
-
+        
         old_soc = self.soc
         p_left = 0
         if p_out/eta < self.p_n:
@@ -63,6 +62,9 @@ class Battery:
         else:
             raise ValueError("Nominal power discharge excedeed")
         
+        if testing:
+            print(f"[!!!] Eta estimated at {eta:.4f} [!!!]")
+            return p_left, eta
         return p_left
 
     @staticmethod
@@ -75,10 +77,10 @@ class Battery:
         print("\t-p_n -> Nominal Power, in kilowatts [kW], default:None, example:250")
         print("\t-max_kwh -> Capacity of the battery in kilowatts per hour, [kWh], default:None, example:50")
         print("\nInstructions for the methods:")
-        print("\t-charge(p_in, dt) -> Apply an amount of power p_in [kw] for a"+ 
-              "timespan of dt [s].\n\tReturns the power which could not be stored, in terms of"+
+        print("\t-charge(p_in, dt) -> Apply an amount of power p_in [kw] for a "+ 
+              "timespan of dt [s].\n\tReturns the power which could not be stored, in terms of "+
               "energy over the specified timespan\n")
-        print("\t-discharge(p_out, dt) -> Draw an amount of power p_out [kw] for a"+ 
-              "timespan of dt [s].\n\tReturns the power which was not available, in terms of energy"+
+        print("\t-discharge(p_out, dt) -> Draw an amount of power p_out [kw] for a "+ 
+              "timespan of dt [s].\n\tReturns the power which was not available, in terms of energy "+
               "over the specified timespan")
         
