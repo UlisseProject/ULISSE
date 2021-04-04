@@ -1,3 +1,3 @@
 __all__ = ['EtaRegressor']
 
-from models.EtaRegressor import EtaRegressor
+from .EtaRegressor import EtaRegressor

@@ -21,8 +21,8 @@ class PV:
     API_KEY = 'hhC6JCzib4-MqjfG48DI0eDSPWT2P9Ez'
     def __init__(self, l=None, k=None, albedo=None, beta=30, gamma=0, 
                  n_series=None, i_sc_ref=None, v_oc_ref=None, t_v_oc=None, t_i_sc=None):
-        self.l = l
-        self.k = k
+        self.l = l # panel glass thickness [m]
+        self.k = k # panel glass extinction factor [1/m]
         self.albedo = albedo
         self.data = None
         self.beta = np.radians(beta); 

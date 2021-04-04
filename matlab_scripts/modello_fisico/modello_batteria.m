@@ -3,13 +3,13 @@ clear all; close all; clc;
 
 %% coefficienti cicli
 
-Pn = 250000; %W
+Pn = 250000; %W it s actually Pmax
 SOC = 0; 
 Dt = 1e12;% s
-Vn = 700; %V (forse anche 700)
+Vn = 700; %V 
 
 V = 220; 
-E_max = 571900; % occhio che è in Wh
+E_max = 571900; % [Wh] NOTE:way too big
 i = 7; %A
 P_in = -V*i; 
 n_cicli = 0;

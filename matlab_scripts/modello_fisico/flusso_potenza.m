@@ -39,14 +39,14 @@ else
     eta = calc_efficiency(SOC, abs(P_in), n_cicli, Pn); % !!! ATTENZIONE: l iput di SOC deve essere in percentuale
     E_dis = 1/eta*P_in*Dt; %Energia per caricare storage
 %    Cn = E_dis/Vn;  %nominal capacity
-    if(E_dis<E_n)
+    if(E_dis<E_n) % 1/eta*P_in < Pn
         SOC = SOC + E_dis/E_max; 
         P_out = 0; 
         if SOC < 0
             SOC1 = SOC; 
             SOC = 0;
             disp("Batteria completamente scarica");
-            Cn1 = i*Dt/(SOC1)*100;
+            % not using i anymore Cn1 = i*Dt/(SOC1)*100;
             E_ch1 = (SOC1 - SOC)/100*E_n ; 
             P_out = E_ch1/Dt;   
         end

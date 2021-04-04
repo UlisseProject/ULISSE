@@ -31,4 +31,15 @@ class EtaParser:
 		z = y.reshape(self.p_in_dim, self.soc_dim)
 
 		return x_surf, y_surf, z
-		
+	
+	def format(self, p_in, soc):
+		if np.isscalar(p_in):
+			p_in = np.expand_dims(np.array(p_in), 0)
+		if np.isscalar(soc):
+			soc = np.expand_dims(np.array(soc), 0)
+		if p_in.shape != soc.shape:
+			raise ValueError("Power e Soc data should be of the same size")
+			
+		X = np.stack((p_in, soc), axis=1)
+
+		return X

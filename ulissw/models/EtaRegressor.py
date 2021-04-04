@@ -12,11 +12,12 @@ class EtaRegressor:
 								   LinearRegression())
 
 	def fit_data(self):
-		self.model.fit(X, y)
+		self.model.fit(self.X, self.y)
 		
-		return self.model.score(X, y)
+		return self.model.score(self.X, self.y)
 
 	def predict(self, X):
-		y_pred = self.model(X)
-
+		y_pred = self.model.predict(X)
+		if y_pred.shape[0] == 1:
+			return y_pred[0]
 		return y_pred
