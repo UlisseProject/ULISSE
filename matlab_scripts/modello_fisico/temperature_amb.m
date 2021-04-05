@@ -2,8 +2,7 @@
 
 clc
 clear all
-%load('milanotemperature.mat')
-load('milanotemperature_new.mat')
+load('milanotemperature.mat')
 
 %%
 m=1;
