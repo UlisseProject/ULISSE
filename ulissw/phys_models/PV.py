@@ -1,6 +1,7 @@
 import requests
 import pvlib
 import numpy as np
+import os
 from ..utils import read_apikey
 
 CONSTANTS = {
@@ -18,7 +19,7 @@ CONSTANTS = {
 
 class PV:
     __BASE_URL = 'https://api.solcast.com.au/world_radiation/forecasts.json'
-    __API_KEY = read_apikey('apikey.txt')
+    __API_KEY =  'SET_BELOW'
     def __init__(self, l=None, k=None, albedo=None, beta=30, gamma=0, 
                  n_series=None, i_sc_ref=None, v_oc_ref=None, t_v_oc=None, t_i_sc=None):
         self.l = l # panel glass thickness [m]
@@ -32,7 +33,12 @@ class PV:
         self.v_oc_ref = v_oc_ref
         self.t_v_oc = t_v_oc
         self.t_i_sc = t_i_sc
-        
+
+        if self.__API_KEY == 'SET_BELOW':
+            my_path = os.path.abspath(os.path.dirname(__file__))
+            path = os.path.join(my_path, "../../apikey.txt")
+            self.__API_KEY = read_apikey(path)
+            
     def __query_api(self, lat, long, time_window):
         PARAMS = {'latitude' : lat,
                   'longitude' : long,

@@ -3,13 +3,18 @@ from ..models import EtaRegressor
 
 class Battery:
     def __init__(self, soc=0, vn=None, n_cycles=0, 
-                 max_kwh=None, pn=None, eff_data='data/eta_data.csv'):
+                 max_kwh=None, pn=None, eff_data=None):
         self.soc = soc # percentage of charge
         self.v_n = vn # nominal voltage [V]
         self.n_cycles = n_cycles # integer n.of cycles
         self.max_kwh = max_kwh # battery capacity [kWh]
         self.p_n = pn # nominal power [W]
         self.e_max = self.max_kwh*3.6e6
+        
+        if eff_data is None:
+            my_path = os.path.abspath(os.path.dirname(__file__))
+            eff_data  = os.path.join(my_path, '../../data/eta_data.csv')
+            
         self.eff_data = EtaParser(path=eff_data)
         self.eff_model = self.__infer_efficiency_model()
 
