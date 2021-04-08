@@ -37,8 +37,8 @@ class PV:
         PARAMS = {'latitude' : lat,
                   'longitude' : long,
                   'hours' : time_window,
-                  'api_key' : self.API_KEY}
-        r = requests.get(url = self.BASE_URL, params = PARAMS)
+                  'api_key' : self.__API_KEY}
+        r = requests.get(url = self.__BASE_URL, params = PARAMS)
         return r.json()['forecasts']
     
     def __calc_tau(self, theta, theta_r):

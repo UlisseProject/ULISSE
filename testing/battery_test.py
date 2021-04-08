@@ -1,7 +1,13 @@
 # Battery Testing 
-# - to be executed in a sibling folder of 'ulissw', or the imports below
+# - to be executed in the parent folder of 'ulissw', or the imports below
 # won't work
 from ulissw.phys_models import Battery
+# NOTE: if not executing from a parent folder of 'ulissw'; you must
+# uncomment the 2 lines below, and pass to .chdir the path to the parent
+# dir of 'ulissw'. The example below shows how to change the path if
+# executing from 'testing'
+# import os
+# os.chdir('..') # leave '..' if executing from 'testing'
 
 # this static method prints out informations about
 # the dimensionality of the parameters required
