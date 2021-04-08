@@ -1,3 +1,4 @@
+import os
 from ..datasets import EtaParser
 from ..models import EtaRegressor
 
