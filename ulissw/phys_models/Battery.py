@@ -10,7 +10,7 @@ class Battery:
         self.n_cycles = n_cycles # integer n.of cycles
         self.max_kwh = max_kwh # battery capacity [kWh]
         self.p_n = pn # nominal power [W]
-        self.e_max = self.max_kwh*3.6e6
+        self.e_max = self.max_kwh*3.6e3 #prima era 3.6e6
         
         if eff_data is None:
             my_path = os.path.abspath(os.path.dirname(__file__))
