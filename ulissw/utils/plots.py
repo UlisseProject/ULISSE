@@ -22,3 +22,19 @@ def plot_surface(x_mesh, y_mesh, z_mesh, label=None, ax_names=['P in', 'SoC', 'E
 
 	fig.colorbar(surf, shrink=0.5, aspect=5)
 	plt.show()
+
+
+def plot_lineset(x_set, y_set, from_line=0, to_line=None, labels=None, legend_title='legend'):
+	if to_line is None:
+		to_line = x_set.shape[1]
+	
+	fig, ax = plt.subplots(figsize=(10, 7))
+	plt.plot(x_set[:, from_line:to_line], y_set[:, from_line:to_line])
+
+	if labels is not None:
+		try:
+			plt.legend(labels[from_line:to_line].round(1), title=legend_title)
+		except:
+			plt.legend(labels[from_line:to_line], title=legend_title)			
+	plt.grid()
+	plt.show()
