@@ -14,8 +14,11 @@ CONSTANTS = {
     'g_ref' : 1000., # Irradiance ref
     'g_noct' : 800., # Irradiance at noct
     't_noct' : 20.,
-    'n_diode' : 1.0134, # diode ideality factor  
-    'k_boltz' : 8.6173324e-5
+    'n_diode_old' : 1.0134, # diode ideality factor  
+    'n_diode' : 1.259, # diode ideality factor  
+    'k_boltz' : 8.6173324e-5,
+    'k_boltz_mod' : 1.38065e-23,
+    'e_charge' : 1.60217e-19
 }
 
 
@@ -101,10 +104,17 @@ class PV:
         t_amb_ref = CONSTANTS['tc_ref'] - (CONSTANTS['noct'] - CONSTANTS['t_noct'])*CONSTANTS['g_ref']/CONSTANTS['g_noct']
         
         tc = t_amb + (CONSTANTS['noct'] - CONSTANTS['t_noct'])*g_tot/CONSTANTS['g_noct'] 
+        tc_ref = t_amb_ref + (CONSTANTS['noct'] - CONSTANTS['t_noct'])*g_tot/CONSTANTS['g_noct'] 
         
         # thermal voltage
-        vt = CONSTANTS['n_diode']*CONSTANTS['k_boltz']*(t_amb+273.15)*self.n_series
-        vt_ref = CONSTANTS['n_diode']*CONSTANTS['k_boltz']*(t_amb_ref+273.15)*self.n_series
+        vt = CONSTANTS['n_diode']*CONSTANTS['k_boltz']*(tc+273.15)
+
+        #vt = CONSTANTS['n_diode']*CONSTANTS['k_boltz']*(tc+273.15)*self.n_series
+        #vt = CONSTANTS['n_diode']*CONSTANTS['k_boltz_mod']*(tc+273.15)/CONSTANTS['e_charge']
+        #vt_ref = CONSTANTS['n_diode']*CONSTANTS['k_boltz_mod']*(tc_ref+273.15)/CONSTANTS['e_charge']
+
+        #vt_ref = CONSTANTS['n_diode']*CONSTANTS['k_boltz']*(tc_ref+273.15)*self.n_series
+        vt_ref = CONSTANTS['n_diode']*CONSTANTS['k_boltz']*(tc_ref+273.15)
         
         i0_ref = self.i_sc_ref/(np.exp(self.v_oc_ref/(self.n_series*vt_ref)) - 1)
         
@@ -114,12 +124,14 @@ class PV:
         
         i0 = i_pv/(np.exp(v_oc/(self.n_series*vt)) - 1)
         
+        v_oc[v_oc == -np.inf] = 0
         V = np.linspace(0, v_oc, self.power_resolution, axis=0)
         I = i_pv - i0*(np.exp(V/(self.n_series*vt)) - 1)
+
         P = I*V        
         p_out = np.max(P, axis=0)
         
-        return p_out, I, V, g, v_oc
+        return p_out, I, V, g, v_oc, vt, tc_diff, i_pv, g_tot, tc
 
     def set_static_data_path(self, path):
         if os.path.isfile(path):
@@ -180,3 +192,27 @@ class PV:
     @staticmethod
     def __map_ymd_to_doy(x):
         return datetime.date(x.year, x.month, x.day).timetuple().tm_yday
+
+    @staticmethod
+    def model_info():
+        print("[|||] This class models a PV  [|||]"+
+              "\nParameters to initialize (they're all public members):"+
+              "\n\t-l -> panel glass thickness [m]"+
+              "\n\t-k -> panel glass extinction factor [1/m]"+
+              "\n\t-albedo -> "+
+              "\n\t-beta -> [degrees]"+
+              "\n\t-gamma -> [degrees]"+
+              "\n\t-i_sc_ref -> []"+
+              "\n\t-v_oc_ref -> []"+
+              "\n\t-t_v_oc -> []"+
+              "\n\t-t_i_sc -> []"+
+              "\n\nInstructions for the methods:"+
+              "\n\t-set_static_data_path(path) -> Ask the model to get data from a static file at the"+ 
+              "specified path.\n\tThe model will not use the API and instead use the file which should contain "+
+              "irradiance and temp data in a csv file\n. To disable this behavior call 'disable_static_data_path'"+
+              "\n\n\t-filter_static_doy_hour(path) -> This method can be used only after setting a static data path to "+
+              "specify\na filter on the day of year/hour data point that should be considered. DoY/Hour not contained "+
+              "in the file hereby specified will be discarded"+
+              "\n\n\t-calc_power(lat, long, time_window) -> Asks the model to query the weather API at the specified "+ 
+              "location for the given window\n\tand evaluate power output of the model. If static data are provided, "+
+              "they will be used instead and there is no need to pass lat, long or time.")

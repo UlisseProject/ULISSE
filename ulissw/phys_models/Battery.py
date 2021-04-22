@@ -74,19 +74,19 @@ class Battery:
         return p_left
 
     @staticmethod
-    def dimensional_info():
-        print("[|||] This class models a battery for energy storage [|||]")
-        print("Parameters to initializate (they're all public members):")
-        print("\t-StateOfCharge -> Percentage of charge, default:0")
-        print("\t-n_cycles -> N. of charge/discharge cycles, integer number, default:0")
-        print("\t-v_n -> Nominal Voltage, in Volt [V], default:None, example:700")
-        print("\t-p_n -> Nominal Power, in kilowatts [kW], default:None, example:250")
-        print("\t-max_kwh -> Capacity of the battery in kilowatts per hour, [kWh], default:None, example:50")
-        print("\nInstructions for the methods:")
-        print("\t-charge(p_in, dt) -> Apply an amount of power p_in [kw] for a "+ 
+    def model_info():
+        print("[|||] This class models a battery for energy storage [|||]"+
+              "\nParameters to initialize (they're all public members):"+
+              "\n\t-StateOfCharge -> Percentage of charge, default:0"+
+              "\n\t-n_cycles -> N. of charge/discharge cycles, integer number, default:0"+
+              "\n\t-v_n -> Nominal Voltage, in Volt [V], default:None, example:700"+
+              "\n\t-p_n -> Nominal Power, in kilowatts [kW], default:None, example:250"+
+              "\n\t-max_kwh -> Capacity of the battery in kilowatts per hour, [kWh], default:None, example:50"+
+              "\n\nInstructions for the methods:"+
+              "\n\t-charge(p_in, dt) -> Apply an amount of power p_in [kw] for a "+
               "timespan of dt [s].\n\tReturns the power which could not be stored, in terms of "+
-              "energy over the specified timespan\n")
-        print("\t-discharge(p_out, dt) -> Draw an amount of power p_out [kw] for a "+ 
+              "energy over the specified timespan\n"+
+              "\n\n\t-discharge(p_out, dt) -> Draw an amount of power p_out [kw] for a "+ 
               "timespan of dt [s].\n\tReturns the power which was not available, in terms of energy "+
               "over the specified timespan")
         
