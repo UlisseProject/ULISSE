@@ -10,8 +10,9 @@ V_oc_ref = 39.2 # from Niccolai's paper
 l=2.5e-3
 k=10
 albedo=0.1
-n_series=60
-pv = PV(l=l, k=k, albedo=albedo, n_series=n_series, t_v_oc=T_V_OC, t_i_sc=T_I_SC, 
+nc=60
+nc_series=20
+pv = PV(l=l, k=k, albedo=albedo, nc=nc, nc_series=nc_series, t_v_oc=T_V_OC, t_i_sc=T_I_SC, 
         i_sc_ref=I_sc_ref, v_oc_ref=V_oc_ref)
 
 ### To get experimental data and the history from Solcast

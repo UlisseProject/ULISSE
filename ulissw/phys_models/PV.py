@@ -26,14 +26,15 @@ class PV:
     __BASE_URL = 'https://api.solcast.com.au/world_radiation/forecasts.json'
     __API_KEY =  'SET_BELOW'
     def __init__(self, l=None, k=None, albedo=None, beta=30, gamma=0, 
-                 n_series=None, i_sc_ref=None, v_oc_ref=None, 
+                 nc_series=None, nc=None, i_sc_ref=None, v_oc_ref=None, 
                  t_v_oc=None, t_i_sc=None, power_resolution=1000):
         self.l = l # panel glass thickness [m]
         self.k = k # panel glass extinction factor [1/m]
         self.albedo = albedo
         self.beta = np.radians(beta); 
         self.gamma = np.radians(gamma);
-        self.n_series = n_series
+        self.nc_series = nc_series # number of cells series-connected
+        self.nc = nc # total number of cells
         self.i_sc_ref = i_sc_ref
         self.v_oc_ref = v_oc_ref
         self.t_v_oc = t_v_oc
@@ -116,17 +117,17 @@ class PV:
         #vt_ref = CONSTANTS['n_diode']*CONSTANTS['k_boltz']*(tc_ref+273.15)*self.n_series
         vt_ref = CONSTANTS['n_diode']*CONSTANTS['k_boltz']*(tc_ref+273.15)
         
-        i0_ref = self.i_sc_ref/(np.exp(self.v_oc_ref/(self.n_series*vt_ref)) - 1)
+        i0_ref = self.i_sc_ref/(np.exp(self.v_oc_ref/(self.nc_series*vt_ref)) - 1)
         
         tc_diff = tc - CONSTANTS['tc_ref']
         i_pv = (g_tot/CONSTANTS['g_ref'])*self.i_sc_ref*(1 + self.t_i_sc*(tc_diff))
-        v_oc = self.v_oc_ref*(1 + self.t_v_oc*(tc_diff)) + (self.n_series*vt*CONSTANTS['n_diode'])*np.log(g_tot/CONSTANTS['g_ref'])
+        v_oc = self.v_oc_ref*(1 + self.t_v_oc*(tc_diff)) + (self.nc*vt*CONSTANTS['n_diode'])*np.log(g_tot/CONSTANTS['g_ref'])
         
-        i0 = i_pv/(np.exp(v_oc/(self.n_series*vt)) - 1)
+        i0 = i_pv/(np.exp(v_oc/(self.nc_series*vt)) - 1)
         
         v_oc[v_oc == -np.inf] = 0
         V = np.linspace(0, v_oc, self.power_resolution, axis=0)
-        I = i_pv - i0*(np.exp(V/(self.n_series*vt)) - 1)
+        I = i_pv - i0*(np.exp(V/(self.nc_series*vt)) - 1)
 
         P = I*V        
         p_out = np.max(P, axis=0)
@@ -199,6 +200,8 @@ class PV:
               "\nParameters to initialize (they're all public members):"+
               "\n\t-l -> panel glass thickness [m]"+
               "\n\t-k -> panel glass extinction factor [1/m]"+
+              "\n\t-nc -> integer number, total num of cells of the module"+
+              "\n\t-nc_series -> integer number, total num of cells connected in series "+
               "\n\t-albedo -> "+
               "\n\t-beta -> [degrees]"+
               "\n\t-gamma -> [degrees]"+
