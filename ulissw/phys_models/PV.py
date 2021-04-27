@@ -4,7 +4,9 @@ import numpy as np
 import pandas as pd
 import os
 import datetime
+from dateutil import parser
 from ..utils import read_apikey
+
 
 CONSTANTS = {
     'n_air' : 1.0002926,
@@ -17,8 +19,6 @@ CONSTANTS = {
     'n_diode_old' : 1.0134, # diode ideality factor  
     'n_diode' : 1.259, # diode ideality factor  
     'k_boltz' : 8.6173324e-5,
-    'k_boltz_mod' : 1.38065e-23,
-    'e_charge' : 1.60217e-19
 }
 
 
@@ -109,12 +109,6 @@ class PV:
         
         # thermal voltage
         vt = CONSTANTS['n_diode']*CONSTANTS['k_boltz']*(tc+273.15)
-
-        #vt = CONSTANTS['n_diode']*CONSTANTS['k_boltz']*(tc+273.15)*self.n_series
-        #vt = CONSTANTS['n_diode']*CONSTANTS['k_boltz_mod']*(tc+273.15)/CONSTANTS['e_charge']
-        #vt_ref = CONSTANTS['n_diode']*CONSTANTS['k_boltz_mod']*(tc_ref+273.15)/CONSTANTS['e_charge']
-
-        #vt_ref = CONSTANTS['n_diode']*CONSTANTS['k_boltz']*(tc_ref+273.15)*self.n_series
         vt_ref = CONSTANTS['n_diode']*CONSTANTS['k_boltz']*(tc_ref+273.15)
         
         i0_ref = self.i_sc_ref/(np.exp(self.v_oc_ref/(self.nc_series*vt_ref)) - 1)
@@ -132,7 +126,7 @@ class PV:
         P = I*V        
         p_out = np.max(P, axis=0)
         
-        return p_out, I, V, g, v_oc, vt, tc_diff, i_pv, g_tot, tc
+        return p_out
 
     def set_static_data_path(self, path):
         if os.path.isfile(path):
@@ -159,7 +153,7 @@ class PV:
     def __import_from_csv(self, path):
         # data/45.502941_9.156574_PVsyst_PT60M.csv
         test_data = pd.read_csv(path, delimiter=",")
-        test_data = PV.__convert_history_data_iface(test_data)
+        test_data = PV.__convert_history_data_iface(test_data, path)
         if self.data_filter is not None:
             test_data = self.__merge_doy_hour_filter(test_data)
         return test_data
@@ -179,16 +173,29 @@ class PV:
         return data
 
     @staticmethod
-    def __convert_history_data_iface(df):
-        conv_dict = {'tamb': 'air_temp'}
-        droppables = ['cloudopacity', 'minute']
+    def __convert_history_data_iface(df, path):
+        if 'PVsyst' in path:
+            conv_dict = {'tamb': 'air_temp'}
+            droppables = ['cloudopacity', 'minute']
 
-        df.columns = df.columns.map(str.lower)
-        df.drop(columns=droppables, inplace=True)        
-        df.columns = df.columns.map(lambda x: conv_dict.get(x, x))
-        df['doy'] = df[['year', 'month', 'day']].apply(PV.__map_ymd_to_doy, axis=1)
+            df.columns = df.columns.map(str.lower)
+            df.drop(columns=droppables, inplace=True)        
+            df.columns = df.columns.map(lambda x: conv_dict.get(x, x))
+            df['doy'] = df[['year', 'month', 'day']].apply(PV.__map_ymd_to_doy, axis=1)
+        else:
+            conv_dict = {'airtemp': 'air_temp'}
+            droppables = ['albedodaily', 'cloudopacity', 'period', 'periodstart']
 
+            df.columns = df.columns.map(str.lower)
+            df.drop(columns=droppables, inplace=True)           
+            df.columns = df.columns.map(lambda x: conv_dict.get(x, x))
+            df['year'], df['month'], df['day'], df['hour'], df['min'] = zip(*df.apply(PV.__map_iso_to_ymd, axis=1))
         return df
+    
+    @staticmethod
+    def __map_iso_to_ymd(x):
+        date_obj = parser.isoparse(x.periodend).timetuple()
+        return date_obj.tm_year, date_obj.tm_mon, date_obj.tm_mday,  date_obj.tm_hour, date_obj.tm_min
 
     @staticmethod
     def __map_ymd_to_doy(x):
