@@ -84,7 +84,8 @@ class PV:
         g_ref = pvlib.irradiance.get_ground_diffuse(np.degrees(self.beta),
                                                     g_ghi, self.albedo, 'urban')
         g_tot =  g_dni*np.cos(theta) + g_dhi*(1+np.cos(self.beta))/2 + g_ref*(1-np.cos(self.beta))/2
-
+        g_tot[g_tot < 0] = 0
+        
         tau_b = self.__calc_tau(theta, theta_r)
         tau_d = self.__calc_tau(theta_equiv_diff, theta_r_equiv_diff)
         # maybe add g_ref
@@ -159,9 +160,9 @@ class PV:
         return test_data
 
     def __merge_doy_hour_filter(self, df):
-        dfh = self.data_filter[['doy', 'hour', 'poutdc']]
+        dfh = self.data_filter[['doy', 'hour', 'ghimeas', 'poutdc']]
         merged_df = df.merge(dfh, on=['doy', 'hour'], how='inner')
-        
+        merged_df.rename(columns={'poutdc': 'p_nick', 'ghimeas':'ghi_nick'}, inplace=True)
         return merged_df
 
     def __get_data_column(self, key):
