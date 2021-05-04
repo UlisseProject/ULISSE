@@ -139,17 +139,39 @@ class PV:
         self.static_data_path = None
         self.data_filter = None
 
+    def disable_data_filter(self):
+        self.data_filter = None
+
     def filter_static_doy_hour(self, filter_path):
         if self.disable_static_data_path is None:
             raise Exception("You need to specify a path for static data if you want to filter them")
-        if not os.path.isfile(filter_path):
-            raise FileNotFoundError('The specified path does not point to an existing file')
-        # data/data_pv.csv
-        df_filter = pd.read_csv(filter_path, delimiter=",") 
-        df_filter.columns = df_filter.columns.map(str.lower)
-        if not {'doy', 'hour', 'poutdc'}.issubset(set(df_filter.columns)):
-            raise ValueError("The filter dataframe should contain columns 'doy' and 'hour'")
-        self.data_filter = df_filter
+        if isinstance(filter_path, pd.core.frame.DataFrame):
+            df_filter = filter_path
+            df_filter['year'], df_filter['month'], df_filter['day'], \
+                df_filter['hour'], df_filter['min'] = zip(*df_filter\
+                                                            .apply(PV.__map_datetime_to_ymd, axis=1))
+            df_filter['doy'] = df_filter[['year', 'month', 'day']]\
+                                .apply(PV.__map_ymd_to_doy, axis=1)
+
+            df_filter.drop(columns=['month', 'day'], inplace=True) 
+            self.data_filter = df_filter
+        else:
+            if not os.path.isfile(filter_path):
+                raise FileNotFoundError('The specified path does not point to an existing file')
+            # data/data_pv.csv
+            df_filter = pd.read_csv(filter_path, delimiter=",") 
+            df_filter.columns = df_filter.columns.map(str.lower)
+            if 'ghimeas' in df_filter.columns:
+                df_filter.rename(columns={'poutdc': 'p_nick', 'ghimeas':'ghi_nick'}, inplace=True)
+                df_filter['year'] = df_filter.apply(lambda x: 2017, axis=1)
+                df_filter['min'] = df_filter.apply(lambda x: 0, axis=1)
+                col_filter = ['year', 'doy', 'hour', 'min', 'p_nick', 'ghi_nick']
+            else:
+                col_filter = ['year', 'doy', 'hour']
+            if not {'year', 'doy', 'hour'}.issubset(set(df_filter.columns)):
+                raise ValueError("The filter dataframe should contain columns 'doy', 'hour', 'year'")
+            
+            self.data_filter = df_filter[col_filter]
 
     def __import_from_csv(self, path):
         # data/45.502941_9.156574_PVsyst_PT60M.csv
@@ -160,9 +182,7 @@ class PV:
         return test_data
 
     def __merge_doy_hour_filter(self, df):
-        dfh = self.data_filter[['doy', 'hour', 'ghimeas', 'poutdc']]
-        merged_df = df.merge(dfh, on=['doy', 'hour'], how='inner')
-        merged_df.rename(columns={'poutdc': 'p_nick', 'ghimeas':'ghi_nick'}, inplace=True)
+        merged_df = df.merge(self.data_filter, on=['year', 'doy', 'hour', 'min'], how='inner')
         return merged_df
 
     def __get_data_column(self, key):
@@ -181,18 +201,26 @@ class PV:
 
             df.columns = df.columns.map(str.lower)
             df.drop(columns=droppables, inplace=True)        
+            df['min'] = df.apply(lambda x: 0, axis=1)
             df.columns = df.columns.map(lambda x: conv_dict.get(x, x))
-            df['doy'] = df[['year', 'month', 'day']].apply(PV.__map_ymd_to_doy, axis=1)
         else:
             conv_dict = {'airtemp': 'air_temp'}
-            droppables = ['albedodaily', 'cloudopacity', 'period', 'periodstart']
+            droppables = ['albedodaily', 'cloudopacity', 'period', 'periodstart', 'periodend']
 
             df.columns = df.columns.map(str.lower)
-            df.drop(columns=droppables, inplace=True)           
             df.columns = df.columns.map(lambda x: conv_dict.get(x, x))
             df['year'], df['month'], df['day'], df['hour'], df['min'] = zip(*df.apply(PV.__map_iso_to_ymd, axis=1))
+            df.drop(columns=droppables, inplace=True)           
+
+        df['doy'] = df[['year', 'month', 'day']].apply(PV.__map_ymd_to_doy, axis=1)
+
         return df
     
+    @staticmethod
+    def __map_datetime_to_ymd(x):
+        date_obj = parser.parse(x.date_time, dayfirst=True).timetuple()
+        return date_obj.tm_year, date_obj.tm_mon, date_obj.tm_mday,  date_obj.tm_hour, date_obj.tm_min
+
     @staticmethod
     def __map_iso_to_ymd(x):
         date_obj = parser.isoparse(x.periodend).timetuple()
