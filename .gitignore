@@ -3,8 +3,17 @@
 *.idea
 
 .ipynb_checkpoints
+*.ipynb
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 .DS_Store
+
+# Reserved folders
+*data
+*imgs
+
+# Secret files
+apikey.txt

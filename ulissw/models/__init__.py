@@ -1,3 +1,4 @@
-__all__ = ['EtaRegressor']
+__all__ = ['EtaRegressor', 'TCN']
 
 from .EtaRegressor import EtaRegressor
+from .TCN import TCN
