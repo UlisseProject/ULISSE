@@ -1,7 +1,0 @@
-Cose da rivedere in modello PV
-
-	- Quando entra in gioco area del pannello?
-
-	- potenza calcolata solo per un PV o per una stringa intera?
-
-	- come calcolo pannelli in serie e parallelo
