@@ -13,7 +13,11 @@ __pycache__/
 
 # Reserved folders
 *data
+*logs*
 *imgs
+
+# Model files
+*.pth
 
 # Secret files
 apikey.txt

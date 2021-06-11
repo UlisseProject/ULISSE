@@ -44,7 +44,7 @@ class TCN(nn.Module):
     model_type = 'tcn'
     def __init__(self, input_size, num_inputs=1, output_size=16, 
                  num_blocks=1, block_dilations=[1, 3, 6, 12, 24],
-                 n_channels=128, kernel_size=6, dropout=0.2):
+                 n_channels=128, kernel_size=6, dropout=0.2, **kwargs):
         super().__init__()
         if not isinstance(n_channels, list):
             n_channels = [n_channels]*num_blocks

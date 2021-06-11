@@ -1,8 +1,39 @@
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
+import numpy as np
 
-from .utils import get_filepath
+from .utils import get_filepath, predict_sequences
+
+
+def plot_n_sequences(sequences, model, n, offset=0, windows=(192, 16), transformer=None, 
+                     title="Demand estimation", save=None):
+    if not isinstance(windows, tuple):
+        raise ValueError("prediction_interval should be a tuple (input sequence len, predicted sequence len)")
+    if len(windows) != 2:
+        raise ValueError("prediction_interval should be a tuple (input sequence len, predicted sequence len)")
+    in_len = windows[0]
+    out_len = windows[1]
+    if sequences.shape[-1] < n + in_len + out_len:
+        raise ValueError(f"The sequences you provided are not enough to evaluate {n} predictions")
+    
+    pred_seq, real_seq = predict_sequences(model, sequences, in_len, out_len, n, offset)
+    
+    if transformer is not None:
+        pred_seq = transformer(pred_seq)
+        real_seq = transformer(real_seq)
+    
+    fig, ax = plt.subplots(figsize=(10,8))
+    plt.xlabel('hours')
+    plt.ylabel('[kW]')
+    plt.title(title)
+    plt.plot(np.arange(n*out_len)/4, pred_seq, label="Predicted")
+    plt.plot(np.arange(n*out_len)/4, real_seq, label="Real")
+    plt.grid()
+    plt.legend()
+    if save is not None:
+        plt.savefig(save)
+    plt.show()                     
 
 
 def plot_many(x=None, y=[], labels=[], save=False, fname='plot_many', autorange=True):

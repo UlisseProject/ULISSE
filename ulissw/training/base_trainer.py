@@ -1,9 +1,12 @@
 import os
+from datetime import datetime
 import torch
 from torch import nn
 from torch import optim
 from torch.utils import data
 from torch.backends import cudnn
+from torch.utils.tensorboard.summary import hparams
+from torch.utils.tensorboard import SummaryWriter
 
 
 class BaseTrainer():
@@ -92,7 +95,13 @@ class BaseTrainer():
     
     @staticmethod
     def preprocess_dataset(dataset, parameters):
-        pass
+        def minmax():
+            dataset.min_max()
+
+        option = parameters.get('PREPROCESS', None)
+        if option is not None:
+            preprocessor = locals()[option]
+            preprocessor()
 
     @staticmethod
     @torch.no_grad()
@@ -129,7 +138,6 @@ class BaseTrainer():
 
         return trainer
 
-
     def setup_metrics(self, metric_classes):
         self.metric_classes = metric_classes if isinstance(metric_classes, list) else [metric_classes]
         self.metric_names = [m.__name__ if m != 0 else 'mse_loss' for m in self.metric_classes]
@@ -142,7 +150,7 @@ class BaseTrainer():
     def eval_metrics(self, **kwargs):
         index = 0
         if (self.metric_classes[0] != 0):
-            metric_on_test = {}
+            metric_test_byname = {}
             for metric in self.metric_classes:
                 if metric.supports_train:
                     metric_train = self.pack_for_metric(metric_class=metric, split='train', **kwargs)
@@ -150,11 +158,12 @@ class BaseTrainer():
                     self.metric_train[index].append(metric_on_train)
 
                 metric_test = self.pack_for_metric(metric_class=metric, split='test', **kwargs)
-                metric_on_test[self.metric_names[index]] = metric_test(**kwargs)
-                self.metric_test[index].append(metric_on_test[self.metric_names[index]])
+                metric_on_test = metric_test(**kwargs)
+                self.metric_test[index].append(metric_on_test)
+                metric_test_byname[self.metric_names[index]] = metric_on_test
 
                 index += 1
-            self.metric_on_test = metric_on_test
+        self.metric_on_test = metric_test_byname
 
     def setup_model_saving(self, save_models):
         self.save_models = save_models
@@ -167,6 +176,12 @@ class BaseTrainer():
             self.best_scores = [0 if metric != 'mse_loss' else 1e9 for metric in self.metric_names]
             self.comparators = [max if metric != 'mse_loss' else min for metric in self.metric_names]
             self.last_best_file = ["" for metric in self.metric_names]
+            for i, metric in enumerate(self.metric_classes):
+                if metric != 0:
+                    if hasattr(metric, 'higher_better'):
+                        if not metric.higher_better:
+                            self.comparators[i] = min
+                            self.best_scores[i] = 1e9
 
     def model_saving(self, avg_epoch_loss, epoch):
         if self.save_models:
@@ -183,4 +198,111 @@ class BaseTrainer():
                                             self.__class__.__name__ + f"epoch{epoch}.pth"))
                     self.last_best_file[i] = os.path.join(self.log_dir, metric, 
                                                           self.__class__.__name__ + f"epoch{epoch}.pth")
-               
+   
+
+    def log_trainer(self, hparameters, train_args):
+        os.makedirs(self.log_dir, exist_ok=True)
+        experiment = datetime.now().strftime('%Y%m%d-%H%M%S')
+        writer = SummaryWriter(log_dir=os.path.join(self.log_dir, experiment))
+        hparams_all, metrics_all = {}, {}
+
+        log_container = {}
+
+        metric_presence = train_args.get('metric', 'no_metric')
+
+        if isinstance(self.train_loss, list):
+            stage = 0
+            log_container[stage] = {}
+            log_container[stage]['train_loss'] = self.train_loss
+            log_container[stage]['test_loss'] = self.test_loss
+
+            log_container[stage]['metric_names'] = self.metric_names
+            if metric_presence != 'no_metric':
+                log_container[stage]['metric_train'] = self.metric_train
+                log_container[stage]['metric_test'] = self.metric_test
+
+        elif isinstance(self.train_loss, tuple):
+            for stage in range(len(self.train_loss)):
+                log_container[stage] = {}
+                log_container[stage]['train_loss'] = self.train_loss[stage]
+                log_container[stage]['test_loss'] = self.test_loss[stage]
+                
+                log_container[stage]['metric_names'] = self.metric_names[stage]
+                if metric_presence != 'no_metric':                
+                    log_container[stage]['metric_train'] = self.metric_train[stage]
+                    log_container[stage]['metric_test'] = self.metric_test[stage]
+
+
+        n_stages = len(log_container) 
+        for stage in log_container:
+            metric_dict = {}
+
+            if n_stages == 1:
+                prefix_scalar = f"Stage 1"
+                prefix_hparam = f"STAGE_1"
+            else:
+                prefix_scalar = f"part {stage+1} of {n_stages}"
+                prefix_hparam = f"part_{stage+1}_of_{n_stages}"
+
+            # Log train reconstruction loss
+            for epoch, loss in enumerate(log_container[stage]['train_loss'], 1):
+                if epoch == 1:
+                    best = loss
+                if best > loss:
+                    best = loss
+                writer.add_scalar(f"{prefix_scalar}/Train reconstruction loss", loss, epoch)
+            metric_dict[f"{prefix_scalar}/Train reconstruction loss [best]"] = best
+
+            # Log test reconstruction loss
+            for epoch, loss in enumerate(log_container[stage]['test_loss'], 1):
+                if epoch == 1:
+                    best = loss
+                if best > loss:
+                    best = loss
+                writer.add_scalar(f"{prefix_scalar}/Test reconstruction loss", loss, epoch)
+            metric_dict[f"{prefix_scalar}/Test reconstruction loss [best]"] = best
+
+            if metric_presence != 'no_metric':
+                for metric_name, metric_train, metric_test in zip(log_container[stage]['metric_names'], 
+                                                                  log_container[stage]['metric_train'],
+                                                                  log_container[stage]['metric_test']):
+                    # Log train metric
+                    for epoch, metric in enumerate(metric_train, 1):
+                        if epoch == 1:
+                            best = metric
+                        if best < metric:
+                            best = metric
+                        writer.add_scalar(f"{prefix_scalar}/Train metric {metric_name}", metric, epoch)
+                    metric_dict[f"{prefix_scalar}/Train metric {metric_name} [best]"] = best
+                    # Log test metric
+                    for epoch, metric in enumerate(metric_test, 1):
+                        if epoch == 1:
+                            best = metric
+                        if best < metric:
+                            best = metric
+                        writer.add_scalar(f"{prefix_scalar}/Test metric {metric_name}", metric, epoch)
+                    metric_dict[f"{prefix_scalar}/Test metric {metric_name} [best]"] = best
+
+            # --- just to avoid big names below
+            metric_names = log_container[stage]['metric_names']
+            # ---
+
+            metrics_all.update(metric_dict)
+
+        hparam_dict = {f'{prefix_hparam}_{hparam}': hparam_value for hparam, hparam_value in hparameters.items()}
+        hparam_dict[f'{prefix_hparam}_metric'] = ", ".join(metric_names) if metric_presence != 'no_metric' else 'no_metric'
+                
+        hparams_all.update(hparam_dict)
+
+        # hparams function must be called with the complete dictionary of all hparams of all stages
+        # you cannot do hparams({'lr_stage1': 1}, {}) and then later hparams({'lr_stage2': .5}, {})
+        # you must do hparams({'lr_stage1': 1, 'lr_stage2': .5}, {})
+        exp, ssi, sei = hparams(hparams_all, metrics_all)
+
+        writer.file_writer.add_summary(exp)
+        writer.file_writer.add_summary(ssi)
+        writer.file_writer.add_summary(sei)
+        for k, v in metrics_all.items():
+            writer.add_scalar(k, v)
+
+        writer.close()

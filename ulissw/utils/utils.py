@@ -1,6 +1,7 @@
 import os
 import glob
 from dateutil import parser
+import torch
 
 
 class RangeDict:
@@ -24,6 +25,27 @@ class RangeDict:
         
     def __setitem__(self, key, val):
         self.dic[key] = val
+
+
+def predict_sequences(model, dataset, in_len, out_len, n, offset=0):
+    model.cuda()
+    sequences = dataset.view(dataset.shape[0], -1)
+    
+    for seq in sequences:
+        pairings = ([], [])
+        for i in range(offset, offset+n):
+            inp = seq[i:(i+in_len)].unsqueeze(0).unsqueeze(1).cuda()
+            out = seq[(i+in_len):(i+in_len+out_len)]
+            
+            pred = model(inp)
+            
+            pairings[0].append(pred.detach().cpu())
+            pairings[1].append(out)
+                    
+    pred_seq = torch.stack(pairings[0]).flatten()
+    real_seq = torch.stack(pairings[1]).flatten()
+
+    return pred_seq, real_seq
 
 
 def get_band_price(x, bands, df_prices):
