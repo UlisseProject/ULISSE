@@ -11,8 +11,9 @@ from torch.utils.tensorboard import SummaryWriter
 
 class BaseTrainer():
     '''see readme file'''
-    def __init__(self, parameters, model=None, optimizer=None, scheduler=None, train_loader=None, test_loader=None, log_dir=None, **kwargs):
+    def __init__(self, parameters, resume=None, model=None, optimizer=None, scheduler=None, train_loader=None, test_loader=None, log_dir=None, **kwargs):
         self.model = model
+        self.resume = resume
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.parameters = parameters
         self.dataset = None
@@ -51,10 +52,9 @@ class BaseTrainer():
         
         self.test_loader = data.DataLoader(self.test_dataset, batch_size=16, shuffle=False, num_workers=4)
         if 'INPUT_SIZE' not in self.parameters:
-            self.parameters['INPUT_SIZE'] = self.train_dataset[0][0].shape[0]
+            self.parameters['INPUT_SIZE'] = self.train_dataset[0][0].shape[-1]
         if 'OUTPUT_SIZE' not in self.parameters:
-            self.parameters['OUTPUT_SIZE'] = self.train_dataset[0][1].shape[0]
-
+            self.parameters['OUTPUT_SIZE'] = self.train_dataset[0][1].shape[-1]
 
     # It is better to execute the generate_dataset_loader first in order to infer the INPUT_SIZE
     def generate_models_optimizers(self, model_class, optimizer_SGD=False, **kwargs):
@@ -68,6 +68,10 @@ class BaseTrainer():
         print("[|||] BUILDING MODEL [|||]")
 
         self.model = model_class(input_size=input_size, output_size=output_size, **kwargs).to(self.device)
+        if self.resume is not None:
+            print(f"[|||] Resuming from {self.resume} [|||]")
+            self.model.load_state_dict(torch.load(self.resume))
+
 
         # create an optimizer object
         if optimizer_SGD is False:
@@ -250,8 +254,8 @@ class BaseTrainer():
                     best = loss
                 if best > loss:
                     best = loss
-                writer.add_scalar(f"{prefix_scalar}/Train reconstruction loss", loss, epoch)
-            metric_dict[f"{prefix_scalar}/Train reconstruction loss [best]"] = best
+                writer.add_scalar(f"{prefix_scalar}/Train MSE loss", loss, epoch)
+            metric_dict[f"{prefix_scalar}/Train MSE loss [best]"] = best
 
             # Log test reconstruction loss
             for epoch, loss in enumerate(log_container[stage]['test_loss'], 1):
@@ -259,8 +263,8 @@ class BaseTrainer():
                     best = loss
                 if best > loss:
                     best = loss
-                writer.add_scalar(f"{prefix_scalar}/Test reconstruction loss", loss, epoch)
-            metric_dict[f"{prefix_scalar}/Test reconstruction loss [best]"] = best
+                writer.add_scalar(f"{prefix_scalar}/Test MSE loss", loss, epoch)
+            metric_dict[f"{prefix_scalar}/Test MSE loss [best]"] = best
 
             if metric_presence != 'no_metric':
                 for metric_name, metric_train, metric_test in zip(log_container[stage]['metric_names'], 

@@ -9,8 +9,8 @@ from .base_trainer import BaseTrainer
 
 class TCNTrainer(BaseTrainer):
     '''see readme file'''
-    def __init__(self, parameters, model=None, optimizer=None, scheduler=None, train_loader=None, test_loader=None, **kwargs):
-        super().__init__(parameters, model, optimizer, scheduler, train_loader, test_loader, **kwargs)
+    def __init__(self, parameters, resume=None, model=None, optimizer=None, scheduler=None, train_loader=None, test_loader=None, **kwargs):
+        super().__init__(parameters, resume, model, optimizer, scheduler, train_loader, test_loader, **kwargs)
         self.train_loss = None
         self.test_loss = None
         self.mse_loss = nn.MSELoss()      
@@ -23,6 +23,7 @@ class TCNTrainer(BaseTrainer):
         MSE_WEIGHT = self.parameters.get('MSE_WEIGHT', 1)
         save_models = self.parameters.get('SAVE_MODELS', False)
         log_freq = self.parameters.get('LOG_FREQUENCY', 5e4)
+        has_meta = self.parameters.get('ADD_METADATA', False)
         metric_classes = kwargs.get('metric', 0)
         eval_freq = kwargs.get('eval_freq', 1)
 
@@ -37,11 +38,13 @@ class TCNTrainer(BaseTrainer):
         # --- Set up model saving ---
         self.setup_model_saving(save_models)
 
-
         for epoch in range(NUM_EPOCHS):
             mse = 0
             for step, (sequence, future_seq) in enumerate(self.train_loader):
-                sequence = sequence.unsqueeze(1).to(self.device)
+                if not has_meta:
+                    sequence = sequence.unsqueeze(1).to(self.device)
+                else:
+                    sequence = sequence.to(self.device)                    
                 future_seq = future_seq.to(self.device)
                 
                 self.model.train()
@@ -62,7 +65,7 @@ class TCNTrainer(BaseTrainer):
 
                 # log the step training loss
                 if (step + 1) % log_freq == 0:
-                    print("epoch progress: {:.3f}%, step loss = {:.4f}".format((step+1)*100/len(self.train_loader), loss))
+                    print("epoch progress: {:.0f}%, step loss = {:.4f}".format((step+1)*100/len(self.train_loader), loss))
 
 
             # compute the epoch training loss

@@ -1,3 +1,6 @@
+# custom
+debug*.py
+
 #IDEs
 *.vscode
 *.idea

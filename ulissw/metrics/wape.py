@@ -9,6 +9,7 @@ class WAPE:
         self.dataset = datasets[0]
         self.model = models[0]
         self.device = device
+        self.has_meta = self.dataset.add_month_hour
         self.predictions, self.reals = self.__gen_predictions()
 
     def __gen_predictions(self):
@@ -20,7 +21,11 @@ class WAPE:
         self.model.to(self.device)
         with torch.no_grad():
             for seq, future_seq in dataloader:
-                res = self.model(seq.unsqueeze(1).to(self.device))
+                if not self.has_meta:
+                    seq = seq.unsqueeze(1).to(self.device)
+                else:
+                    seq = seq.to(self.device)  
+                res = self.model(seq)
                 preds.append(res.detach().cpu())
                 real.append(future_seq)
         preds = torch.cat(preds, dim=0)
