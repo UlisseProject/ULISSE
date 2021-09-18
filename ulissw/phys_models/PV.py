@@ -147,13 +147,22 @@ class PV:
             raise Exception("You need to specify a path for static data if you want to filter them")
         if isinstance(filter_path, pd.core.frame.DataFrame):
             df_filter = filter_path
-            df_filter['year'], df_filter['month'], df_filter['day'], \
-                df_filter['hour'], df_filter['min'] = zip(*df_filter\
-                                                            .apply(PV.__map_datetime_to_ymd, axis=1))
-            df_filter['doy'] = df_filter[['year', 'month', 'day']]\
-                                .apply(PV.__map_ymd_to_doy, axis=1)
+            if 'date_time' in df_filter.columns:
+                df_filter['year'], df_filter['month'], df_filter['day'], \
+                    df_filter['hour'], df_filter['min'] = zip(*df_filter\
+                                                                .apply(PV.__map_datetime_to_ymd, axis=1))
+                df_filter['doy'] = df_filter[['year', 'month', 'day']]\
+                                    .apply(PV.__map_ymd_to_doy, axis=1)
 
-            df_filter.drop(columns=['month', 'day'], inplace=True) 
+                df_filter.drop(columns=['month', 'day'], inplace=True) 
+            elif 'timestamp' in df_filter.columns:
+                df_filter['year'], df_filter['doy'], \
+                    df_filter['hour'], df_filter['min'] = zip(*df_filter\
+                                                            .apply(PV.__map_timestamp_to_ydoyhm, axis=1))     
+                # df_filter.drop(columns=['timestamp'], inplace=True) 
+
+            else:
+                raise Exception("The filtering df should contain either 'date_time' or 'timestamp'")
             self.data_filter = df_filter
         else:
             if not os.path.isfile(filter_path):
@@ -221,6 +230,11 @@ class PV:
         date_obj = parser.parse(x.date_time, dayfirst=True).timetuple()
         return date_obj.tm_year, date_obj.tm_mon, date_obj.tm_mday,  date_obj.tm_hour, date_obj.tm_min
 
+    @staticmethod
+    def __map_timestamp_to_ydoyhm(x):
+        tt = x.timestamp.timetuple()
+        return tt.tm_year, tt.tm_yday, tt.tm_hour, tt.tm_min
+    
     @staticmethod
     def __map_iso_to_ymd(x):
         date_obj = parser.isoparse(x.periodend).timetuple()

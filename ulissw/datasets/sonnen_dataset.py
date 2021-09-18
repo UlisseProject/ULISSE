@@ -1,6 +1,7 @@
 import glob
 import pandas as pd
 import numpy as np
+import random
 
 import torch
 from torch.utils.data import Dataset, Subset
@@ -69,7 +70,10 @@ class CustomerDataset(Dataset):
 		self.preprocess_info['min'] = min_seq
 		self.preprocess_info['max'] = max_seq
 
-		self.db[:,0,:] = ((self.db[:,0,:] - min_seq) / (max_seq - min_seq)).data
+		if not self.add_month_hour:
+			self.db = ((self.db - min_seq) / (max_seq - min_seq))
+		else:
+			self.db[:,0,:] = ((self.db[:,0,:] - min_seq) / (max_seq - min_seq)).data
 	
 	def revert_preprocessing(self, data):
 		def revert_month_hour(data):
@@ -125,6 +129,22 @@ class CustomerDataset(Dataset):
 		df.sort_values(by='timestamp', ignore_index=True)
 
 		return df
+
+	def sample_df_cons(self, group_n=20):
+		df_idxs = np.random.choice(len(self.dfs), group_n, replace=False)
+		tot_cons = pd.Series(np.zeros(self.dfs[0].shape[0]))
+		for idx in df_idxs:
+			tot_cons += self.dfs[idx].cons
+
+		return tot_cons
+
+	def get_timestamp_filter(self, year=None):
+		if year is None:
+			years = np.unique(np.array(list(map(lambda df: df.iloc[0].timestamp.timetuple().tm_year, self.dfs))))
+			year = random.choice(years)
+
+		year_dfs = list(filter(lambda df: year ==  df.iloc[0].timestamp.timetuple().tm_year, self.dfs))
+		return year_dfs[0]
 
 	@staticmethod
 	def __format_db_for_strategy(db, strategy, n, **kwargs):

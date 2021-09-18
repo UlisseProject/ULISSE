@@ -27,16 +27,26 @@ class RangeDict:
         self.dic[key] = val
 
 
-def predict_sequences(model, dataset, in_len, out_len, n, offset=0):
+def predict_sequences(model, dataset, in_len, out_len, n, offset=0, has_meta=False):
     model.cuda()
-    sequences = dataset.view(dataset.shape[0], -1)
-    
+    if (len(dataset.shape) > 2) and (dataset.shape[1] > 1):
+        has_meta = True
+
+    sequences = dataset
+    if not has_meta:
+        sequences = sequences.view(dataset.shape[0], -1)
+
     for seq in sequences:
         pairings = ([], [])
         for i in range(offset, offset+n):
-            inp = seq[i:(i+in_len)].unsqueeze(0).unsqueeze(1).cuda()
-            out = seq[(i+in_len):(i+in_len+out_len)]
-            
+            if not has_meta:
+                inp = seq[i:(i+in_len)].unsqueeze(0).unsqueeze(1).cuda()
+                out = seq[(i+in_len):(i+in_len+out_len)]
+            else:
+                inp = seq[:, i:(i+in_len)].unsqueeze(0).cuda()
+                out = seq[0, (i+in_len):(i+in_len+out_len)]
+
+
             pred = model(inp)
             
             pairings[0].append(pred.detach().cpu())
@@ -49,7 +59,10 @@ def predict_sequences(model, dataset, in_len, out_len, n, offset=0):
 
 
 def get_band_price(x, bands, df_prices):
-    date_obj = parser.parse(x.date_time, dayfirst=True).timetuple()
+    if 'date_time' in x.index:
+        date_obj = parser.parse(x.date_time, dayfirst=True).timetuple()
+    elif 'timestamp' in x.index:
+        date_obj = x.timestamp.timetuple()
     wday = date_obj.tm_wday
     band = bands[wday][x.hour]
     price = df_prices.loc[x.month, band]

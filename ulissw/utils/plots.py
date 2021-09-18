@@ -33,7 +33,28 @@ def plot_n_sequences(sequences, model, n, offset=0, windows=(192, 16), transform
     plt.legend()
     if save is not None:
         plt.savefig(save)
-    plt.show()                     
+    plt.show()
+    return pred_seq, real_seq                     
+
+
+def compare_cons_prod(timestamps, cons, prod, day):
+    fig, ax = plt.subplots(figsize=(14,8))
+    
+    dd = int(day.split(':')[0])
+    mm = int(day.split(':')[1])
+    plt.ylabel('[kWh]')
+    plt.title('Consumed vs Produced energy')
+
+    x_idxs = timestamps.map(lambda x: str(x.timetuple().tm_mon)+':'+str(x.timetuple().tm_mday)).loc[lambda el: el==str(mm)+':'+str(dd)].index
+    x = timestamps[x_idxs].map(lambda x:str(x.timetuple().tm_hour) + ':' + str(x.timetuple().tm_min))
+    plt.plot(x, cons[x_idxs], label="cons")
+    plt.plot(x, prod[x_idxs], label="prod")
+    plt.grid()
+    plt.legend()
+    plt.xlabel(f'hours of the day - {dd} of {timestamps[x_idxs].iloc[0].month_name()}')
+    l = len(x)
+    plt.xticks(np.arange(0, l, 4))
+    plt.show()
 
 
 def plot_many(x=None, y=[], labels=[], save=False, fname='plot_many', autorange=True):
